@@ -14,12 +14,12 @@ function faq_chatbot_get_response($message, $pdf_path) {
 
 function generate_gpt_response($message, $text) {
     $api_url = 'https://api.replicate.com/v1/predictions';
-    $api_key = 'your_replicate_api_key';  // Replace with your actual API key
+    $api_key = '';  // Replace with your actual API key
 
     $data = [
         'version' => 'mistralai/mistral-7b-v0.1',  // Ensure this matches the model version on Replicate
         'input' => [
-            'prompt' => "The following is a FAQ document:\n\n$text\n\nUser question: $message",
+            'prompt' => "The following is a FAQ document:\\n\\n$text\\n\\nUser question: $message",
             'max_length' => 100,
         ],
     ];

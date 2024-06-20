@@ -4,6 +4,7 @@ jQuery(document).ready(function($) {
     var $chatbot = $('#faq-chatbot');
     var $messages = $('#faq-chatbot-messages');
     var $input = $('#faq-chatbot-input input');
+    var $button = $('#faq-chatbot-send');
 
     function appendMessage(content, className) {
         var $message = $('<div>').addClass(className).text(content);
@@ -11,7 +12,7 @@ jQuery(document).ready(function($) {
         $messages.scrollTop($messages.prop('scrollHeight'));
     }
 
-    $('#faq-chatbot-input button').on('click', function() {
+    $button.on('click', function() {
         var message = $input.val();
         if (message.trim() === '') return;
 
@@ -30,11 +31,11 @@ jQuery(document).ready(function($) {
                 if (response.success) {
                     appendMessage(response.data, 'bot-message');
                 } else {
-                    appendMessage('An error occurred.', 'bot-message');
+                    appendMessage('An error occurred: ' + response.data, 'bot-message');
                 }
             },
-            error: function() {
-                appendMessage('An error occurred.', 'bot-message');
+            error: function(xhr, status, error) {
+                appendMessage('An error occurred: ' + error, 'bot-message');
             }
         });
     });

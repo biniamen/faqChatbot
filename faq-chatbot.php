@@ -5,20 +5,19 @@ Description: A chatbot widget that answers questions based on a FAQ PDF.
 Version: 1.1
 Author: Biniyam K
 */
-require 'vendor/autoload.php'; // Make sure to include the Composer autoload file
 
+require 'vendor/autoload.php'; // Make sure to include the Composer autoload file
 use Smalot\PdfParser\Parser;
+
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly
 }
-//require_once plugin_dir_path(__FILE__) . 'admin-settings.php';
-//require_once plugin_dir_path(__FILE__) . 'chatbot-interface.php';
-//require_once plugin_dir_path(__FILE__) . 'pdf-parser.php';
+
 // Enqueue necessary scripts and styles
 function faq_chatbot_enqueue_scripts() {
     wp_enqueue_style('faq-chatbot-style', plugins_url('style.css', __FILE__));
     wp_enqueue_script('faq-chatbot-script', plugins_url('chatbot.js', __FILE__), array('jquery'), null, true);
-    wp_localize_script('faq_chatbot-script', 'faq_chatbot', array(
+    wp_localize_script('faq-chatbot-script', 'faq_chatbot', array(
         'ajax_url' => admin_url('admin-ajax.php'),
     ));
 }
@@ -103,11 +102,17 @@ function faq_chatbot_ask() {
     $pdf_id = get_option('faq_pdf_attachment_id');
     $pdf_path = get_attached_file($pdf_id);
 
-    // TODO: Add logic to process the message using the GPT model and the parsed PDF content
-    // Example: Use an external API or a custom function to get the response
-    $response = faq_chatbot_get_response($message, $pdf_path);
+    if (!file_exists($pdf_path)) {
+        wp_send_json_error('PDF file not found');
+        return;
+    }
 
-    wp_send_json_success($response);
+    try {
+        $response = faq_chatbot_get_response($message, $pdf_path);
+        wp_send_json_success($response);
+    } catch (Exception $e) {
+        wp_send_json_error('Error processing request: ' . $e->getMessage());
+    }
 }
 
 function faq_chatbot_get_response($message, $pdf_path) {
@@ -125,12 +130,12 @@ function faq_chatbot_get_response($message, $pdf_path) {
 
 function generate_gpt_response($message, $text) {
     $api_url = 'https://api.replicate.com/v1/predictions';
-    $api_key = 'r8_NcU5OtzvwpIOmyQzMp8HT9jxnVyUmQT1WpvQR';  // Replace with your actual API key
+    $api_key = '';  // Replace with your actual API key
 
     $data = [
         'version' => 'mistralai/mistral-7b-v0.1',  // Ensure this matches the model version on Replicate
         'input' => [
-            'prompt' => "The following is a FAQ document:\n\n$text\n\nUser question: $message",
+            'prompt' => "The following is a FAQ document:\\n\\n$text\\n\\nUser question: $message",
             'max_length' => 100,
         ],
     ];
@@ -144,14 +149,14 @@ function generate_gpt_response($message, $text) {
     ]);
 
     if (is_wp_error($response)) {
-        return "Error communicating with GPT API.";
+        throw new Exception('Error communicating with GPT API.');
     }
 
     $body = wp_remote_retrieve_body($response);
     $result = json_decode($body, true);
 
     if (isset($result['error'])) {
-        return "Error: " . $result['error'];
+        throw new Exception('Error: ' . $result['error']);
     }
 
     return $result['choices'][0]['text'] ?? "Sorry, I couldn't find an answer to your question.";
@@ -166,7 +171,7 @@ function faq_chatbot_shortcode() {
         <div id="faq-chatbot-messages"></div>
         <div id="faq-chatbot-input">
             <input type="text" placeholder="Type a message..." />
-            <button>Send</button>
+            <button id="faq-chatbot-send">Send</button>
         </div>
     </div>
     <?php
